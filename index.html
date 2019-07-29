@@ -1,0 +1,34 @@
+<!DOCTYPE html><html><head>
+<meta charset="UTF-8">
+<title>Touch Event</title>
+<meta name="viewport" content="width=device-width">
+<style> canvas{ border: solid 1px red; } </style>
+</head>
+<body>
+<canvas id="my canvas" width="300" height="300"></canvas>
+<div id="monitor"></div>
+<script>
+var my_canvas = document.getElementById("my canvas");
+
+// 指が触れたとき
+my_canvas.addEventListener("touchstart" , touch_monitor);
+// 指が動いたとき
+my_canvas.addEventListener("touchmove" , touch_monitor);
+// 指が離れたとき
+my_canvas.addEventListener("touchend" , touch_monitor);
+
+// 各タッチの座標を表示
+function touch_monitor(e) {
+  e.preventDefault(); // デフォルトイベントをキャンセル
+  var s = "";
+  for (var i = 0; i < e.touches.length; i++){
+    var t = e.touches[i];
+    s += "[" + t.identifier + "]";
+    s += "x=" + t.pageX + ",";
+    s += "y=" + t.pageY + "<br>";
+  }
+  document.getElementById("monitor").innerHTML = s;
+}
+
+</script>
+</body></html>
