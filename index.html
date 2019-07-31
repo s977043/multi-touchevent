@@ -33,9 +33,12 @@ function touch_monitor(e) {
 //  var c = Math.sqrt( Math.pow( e.touches[3].pageX - e.touches[2].pageX , 2 ) + Math.pow( e.touches[3].pageY - e.touches[2].pageY, 2 ) ) ;
 //  var d = Math.sqrt( Math.pow( e.touches[0].pageX - e.touches[3].pageX , 2 ) + Math.pow( e.touches[0].pageY - e.touches[3].pageY, 2 ) ) ;
 
-  s += "1-2 ：" + a + "<br>";
-  s += "2-3 ：" + b + "<br>";
-  s += "3-4 ：" + c + "<br>";
+  var abc = a+b+c ;
+
+  s += "1→2の距離 ：" + a +  "(" + a/abc + ") <br>";
+  s += "2→3の距離：" + b +   "(" + b/abc + ") <br>";
+  s += "3→1の距離 ：" + c +   "(" + c/abc + ") <br>";
+  s += "1→2→3の距離：" + abc +   "(" + abc/abc + ") <br>";
 //  s += "4-1 ：" + d + "<br>";
 
   document.getElementById("monitor").innerHTML = s;
