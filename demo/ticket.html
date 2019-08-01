@@ -1,0 +1,30 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <!--
+    meta viewport を指定する。
+    デバイスのサイズに合わせた等倍率でスケールを固定する設定。
+    ユーザーによるスケール変更を許す設定も技術的に不可能では無いが、この設定での運用を推奨する。
+    -->
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no">
+    <title>電子チケット スタンプ DEMO </title>
+    <!-- 依存ライブラリの取り込み-->
+    <script src="https://code.jquery.com/jquery-3.1.0.min.js"></script>
+    <!--  Spec.js  -->
+    <script src="lib/SpecCatalog.js"></script>
+    <script src="lib/Spec.js"></script>
+    <!-- サンプルプログラムのうちクライアント側の振る舞いは主に JavaScript に書かれる。これを取り込む-->
+    <script src="stamp.js"></script>
+    <script src="ticket.js"></script>
+    <link rel="stylesheet" href="ticket.css">
+  </head>
+  <body>
+    <div class="error-message"></div>
+    <div class="stamp_p"></div>
+    <div class="loading"></div>
+    <div class="overlay-black fade-in"></div>
+    <div class="overlay-white flush"></div>
+  </body>
+</html>
