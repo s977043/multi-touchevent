@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 		error.style.display = 'none';
 
-		new Digishot({ uri: '../ticketServlet' }).postQuery(event, function (block) {
+		new Digishot({ uri: 'ticketServlet' }).postQuery(event, function (block) {
 			// ブロックの認識が成功した
 			// 白く明滅
 			var whiteout = document.querySelector('.overlay-white');

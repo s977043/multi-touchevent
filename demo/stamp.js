@@ -13,7 +13,7 @@
 	};
 
 	///=====================================================================================================================
-	/// @brief 　Digishot クラス
+	/// @brief 　Dstamp クラス
 	///
 	/// @param  options             {Object}                (required) 初期化オプション
 	///             .uri            {String}                (required) 認識サーバのURI
@@ -22,12 +22,14 @@
 	///             .pointNum       {Int}                   (optional) 導電点の数(省略した場合は検出端子数のチェックをしない)
 	///             .spec           {Spec}                  (optional) Spec.js のインスタンス
 	///=====================================================================================================================
-	global.Digishot = function Digishot(options) {
+	global.Dstamp = function Dstamp(options) {
 		this._uri = options.uri + '';
 		this._timeout = options.timeout - 0 || 3000;
 		this._hint = options.hint || 'standard/A';
 		this._pointNum = options.pointNum - 0;
 		this._spec = options.spec || new Spec();
+//		this._ua = new UserAgent(); // iPhone 6
+//		this._spec = options.spec || new Spec(ua);
 	};
 
 	///=====================================================================================================================
@@ -38,7 +40,7 @@
 	/// @param  nonDetectHandler    {function(String)}      (optional) 不認識イベントハンドラー
 	/// @param  errorHandler        {function(Int,String)}  (optional) 通信エラーイベントハンドラー
 	///=====================================================================================================================
-	Digishot.prototype.postQuery = function (event, detectHandler, nonDetectHandler, errorHandler) {
+	Dstamp.prototype.postQuery = function (event, detectHandler, nonDetectHandler, errorHandler) {
 		var touches = (event.originalEvent || event).touches;
 
 		if (this._pointNum && this._pointNum !== touches.length) {
@@ -82,4 +84,4 @@
 			errorHandler && errorHandler(status, error);
 		});
 	};
-})(window, jQuery, Spec);
+})(window, jQuery);
