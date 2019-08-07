@@ -108,7 +108,7 @@ for (var i = 0; i < 3 ; i++){
 		var t = t3;
 	}
 	*/
-  var t = e.touches[i];
+  var t = touches[i];
   s += "[" + t.identifier + "]";
   s += "x=" + t.pageX + ",";
   s += "y=" + t.pageY + "<br>";
