@@ -62,7 +62,7 @@
 		};
 
 		console.log(query);
-
+/*
 		//	サーバに送信
 		$.ajax(this._uri, {
 			type: 'POST',
@@ -82,6 +82,54 @@
 		}, function (jqxhr, status, error) {
 			//	通信に失敗
 			errorHandler && errorHandler(status, error);
+//			detectHandler && detectHandler( true);
+
 		});
+*/
+
+var s = "";
+for (var i = 0; i < touches.length; i++){
+/*
+// デバック対応
+var t1 = touches;
+var t2 = t1;
+var t3 = t1;
+t2.pageX = t1[0].pageX + 10;
+t2.pageY = t1[0].pageY + 10.5;
+t3.pageX = t1[0].pageX + 20.5;
+t3.pageY = t1[0].pageY + 25.5;
+
+for (var i = 0; i < 3 ; i++){
+	if ( i== 0) {
+		var t = t1;
+	} else 	if ( i== 1) {
+		var t = t2;
+	}else {
+		var t = t3;
+	}
+	*/
+  var t = e.touches[i];
+  s += "[" + t.identifier + "]";
+  s += "x=" + t.pageX + ",";
+  s += "y=" + t.pageY + "<br>";
+}
+
+var a = Math.sqrt( Math.pow( touches[1].pageX - touches[0].pageX , 2 ) + Math.pow( touches[1].pageY - touches[0].pageY, 2 ) ) ;
+var b = Math.sqrt( Math.pow( touches[2].pageX - touches[1].pageX , 2 ) + Math.pow( touches[2].pageY - touches[1].pageY, 2 ) ) ;
+var c = Math.sqrt( Math.pow( touches[0].pageX - touches[2].pageX , 2 ) + Math.pow( touches[0].pageY - touches[2].pageY, 2 ) ) ;
+//  var c = Math.sqrt( Math.pow( touches[3].pageX - touches[2].pageX , 2 ) + Math.pow( touches[3].pageY - touches[2].pageY, 2 ) ) ;
+//  var d = Math.sqrt( Math.pow( touches[0].pageX - touches[3].pageX , 2 ) + Math.pow( touches[0].pageY - touches[3].pageY, 2 ) ) ;
+
+var abc = a+b+c ;
+
+s += "1→2の距離 ：" + a +  "(" + a/abc + ") <br>";
+s += "2→3の距離：" + b +   "(" + b/abc + ") <br>";
+s += "3→1の距離 ：" + c +   "(" + c/abc + ") <br>";
+s += "1→2→3の距離：" + abc +   "(" + abc/abc + ") <br>";
+//  s += "4-1 ：" + d + "<br>";
+
+document.getElementById("debug_area").innerHTML = s;
+
+detectHandler && detectHandler( true);
 	};
-})(window, jQuery);
+})(window, jQuery, Spec);

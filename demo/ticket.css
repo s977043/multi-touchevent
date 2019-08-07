@@ -66,14 +66,18 @@
   .stamp_p {
     display: none;
     position: absolute;
-    width: 250px;
-    height: 250px;
     background-image: url(img/ticket_stamp.png);
     background-repeat: no-repeat;
-    background-size: cover;
+    background-size: contain;
     background-position: center center;
-    -webkit-transform: translate(-50%, -50%);
-            transform: translate(-50%, -50%);
+    width: 90vw;
+    height: 90vh;
+  }
+  @media screen and (max-width: 320px) and (max-width: 480px) {
+    .box {
+      width: 250px;
+      height: 250px;
+    }
   }
 
   .loading {

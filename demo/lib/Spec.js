@@ -1,405 +1,453 @@
-(function moduleExporter(name, closure) {
-"use strict";
+// http://git.io/Spec
 
-var entity = GLOBAL["WebModule"]["exports"](name, closure);
+(function(global) {
+    "use strict";
 
-if (typeof module !== "undefined") {
-    module["exports"] = entity;
-}
-return entity;
+    // --- dependency modules ----------------------------------
+    var Catalog = global["SpecCatalog"];
+    var Hash    = global["Hash"];
 
-})("Spec", function moduleClosure(global, WebModule, VERIFY /*, VERBOSE */) {
-"use strict";
+    // --- define / local variables ----------------------------
+    var _isNodeOrNodeWebKit = !!global.global;
+    var _runOnNodeWebKit =  _isNodeOrNodeWebKit &&  /native/.test(setTimeout);
+    //var _runOnNode       =  _isNodeOrNodeWebKit && !/native/.test(setTimeout);
+    //var _runOnWorker     = !_isNodeOrNodeWebKit && "WorkerLocation" in global;
+    var _runOnBrowser    = !_isNodeOrNodeWebKit && "document" in global;
 
-// --- technical terms / data structure --------------------
-// --- dependency modules ----------------------------------
-var Catalog   = WebModule["SpecCatalog"];
-var CatalogFP = WebModule["SpecCatalogFP"];
-// --- import / local extract functions --------------------
-// --- define / local variables ----------------------------
-// --- class / interfaces ----------------------------------
-function Spec(ua,        // @arg UserAgent|Object - WebModule.UserAgent object
-              options) { // @arg Object = null - { DATE, MAX_THREADS, MAX_TOUCH_POINTS }
-//{@dev
-    if (VERIFY) {
-        $valid($type(ua, "UserAgent|Object"), Spec, "ua");
-    }
-//}@dev
+    var ALT_DEVICE_ID    = { "Android": "Nexus 5", "iOS": "iPhone 5" };
+    var WEBGL_CONTEXTS   = [ "webgl2", "experimental-webgl2", "webgl", "experimental-webgl" ];
+    var BROWSER_ENGINES  = { "Chrome": "Blink", "Firefox": "Gecko", "IE": "Trident",
+                             "AOSP": "WebKit", "Safari": "WebKit", "WebKit": "WebKit",
+                             "Chrome for iOS": "WebKit" };
+    var CANVAS_DETECTED  = false;
+    var WEBGL_CONTEXT    = ""; // WebGL Context. "webgl", "webgl2", "experimental-webgl", ...
+    var GPU_VERSION      = "";
+    var MAX_TEXTURE_SIZE = 0;  // GL_MAX_TEXTURE_SIZE (0, 1024 - 16384)
+    var GPU_FINGERPRINT  = 0x00000000;
+    var CANVAS_FINGERPRINT = 0x00000000;
 
-    _init.call(this, ua, options || {});
-}
+    // --- class / interfaces ----------------------------------
+    function Spec(mutable) { // @arg Boolean = false - true is mutable, false is immutable.
+        var width = 0, height = 0;
 
-Spec["repository"] = "https://github.com/uupaa/Spec.js";
-Spec["prototype"] = Object.create(Spec, {
-    "constructor":      { "value": Spec }, // new Spec():Spec
-    "UNKNOWN":          { "get":   function()  { return this._UNKNOWN;          } }, // Unknown device.
-    // --- for Smart Phone ---
-    "SOC":              { "get":   function()  { return this._SOC;              } }, // System On Chip ID (UPPER_CASE STRING). eg: "MSM8974", "A5X"
-    "GPU":              { "get":   function()  { return this._GPU;              } }, // GPU ID. eg: "ADRENO 330"
-    "RAM":              { "get":   function()  { return this._RAM;              } }, // Memory (MB)
-    "BLE":              { "get":   function()  { return this._BLE;              } }, // BLE Ready. Bluetooth 4.0+ and OS support(iOS 5+, Android 4.3+)
-    "NFC":              { "get":   function()  { return this._NFC;              } }, // NFC Ready. Android 2.3+
-    "OTG":              { "get":   function()  { return this._OTG;              } }, // USB On-the-Go. USB HOST.
-    "ATOM":             { "get":   function()  { return this._ATOM;             } }, // Intel ATOM.
-    "SIMD":             { "get":   function()  { return this._SIMD;             } }, // SIMD(NEON) support. Tegra 2 does not supports NEON.
-    "H265_ENCODER":     { "get":   function()  { return this._H265_ENCODER;     } }, // H.265 hardware encoder.
-    "H265_DECODER":     { "get":   function()  { return this._H265_DECODER;     } }, // H.265 hardware decoder.
-    "FORCE_TOUCH":      { "get":   function()  { return this._FORCE_TOUCH;      } }, // Force touch support.
-    "FORCE_CLICK":      { "get":   function()  { return this._FORCE_CLICK;      } }, // Force click on link navigation.
-    "MAX_THREADS":      { "get":   function()  { return this._MAX_THREADS;      } }, // Max threads in WebWorkers.
-    "MAX_TOUCH_POINTS": { "get":   function()  { return this._MAX_TOUCH_POINTS; } }, // Max touch points.
-    "MAX_TEXTURE_SIZE": { "get":   function()  { return this._MAX_TEXTURE_SIZE; } }, // GPU Max texture size.
-    "GLES":             { "get":   function()  { return this._GLES;             } }, // OpenGL ES version.
-    "METAL":            { "get":   function()  { return this._METAL;            } }, // METAL version.
-    "VULKAN":           { "get":   function()  { return this._VULKAN;           } }, // VULKAN version.
-    "LOW_END":          { "get":   function()  { return this._LOW_END;          } }, // low-end CPU or low-end GPU.
-    "OUTMODED":         { "get":   function()  { return this._OUTMODED;         } }, // Outmoded device. Device was elapsed for 24 or 30 months.
-                                                                                     //     24 months: OS was not updated.
-                                                                                     //     24 + 6 months: OS was updated.
-    // --- for Feature Phone ---
-    "FP_TLS":           { "get":   function()  { return this._FP_UTF8;          } }, // TLS support
-    "FP_UTF8":          { "get":   function()  { return this._FP_TLS;           } }, // UTF8 support
-    "FP_COOKIE":        { "get":   function()  { return this._FP_COOKIE;        } }, // Cookie support
-    "FP_CERT_SHA1":     { "get":   function()  { return this._FP_CERT_SHA1;     } }, // Device is affected by the disabled of SHA1 server certificate.
-    "FP_FLASH_LITE":    { "get":   function()  { return this._FP_FLASH_LITE;    } }, // FlashLite version. 1.0 / 1.1 / 2.0 / 3.0 / 3.1 or 0.0
-    "FP_MALFUNCTION":   { "get":   function()  { return this._FP_MALFUNCTION;   } }, // Device malfunction.
-    "FP_DISPLAY_LONG":  { "get":   function()  { return this._FP_DISPLAY_LONG;  } }, // Display long edge
-    "FP_DISPLAY_SHORT": { "get":   function()  { return this._FP_DISPLAY_SHORT; } }, // Display short edge
-});
+        if (_runOnNodeWebKit || _runOnBrowser) {
+            if (!CANVAS_DETECTED) {
+                CANVAS_DETECTED = true;
+                _detectCanvas();
+            }
+            width  = screen["width"];
+            height = screen["height"];
+        }
+        this._FEATURE = { DEVICE: 0x0, SOC: 0x0, GPU: 0x0 };
+        this._LIMIT   = { DEVICE: 0x0, SOC: 0x0, GPU: 0x0 };
+        // --- DEVICE/SOC/CPU/GPU/APP ---
+        this._DEVICE_ID         = "";       // Device ID picked up from the UserAgent string. eg: "iPhone 5"
+        this._KNOWN_DEVICE      = false;    // Known Device.
+        this._LOW_END_DEVICE    = false;    // Low end device.
+        this._APP               = 0;        // Preinstalled app in device.
+        this._RAM               = 0;        // RAM (MB)
+        this._SOC_ID            = "";       // System On Chip ID (UPPER_CASE STRING). eg: "MSM8974", "A5X"
+        this._CPU_CLOCK         = 0.0;      // CPU clock, GHz.
+        this._CPU_CORES         = 1;        // CPU cores. 1(single core), 2(dual core), 4(quad core)
+        this._GPU_ID            = "";       // GPU ID. eg: "ADRENO 330"
+        this._GPU_GFLOPS        = 0.0;      // GPU GFLOPS. 0.0 - 999.9
+        this._LOW_END_GPU       = false;    // Low end GPU.
+        this._GLES_VERSION      = 0.0;      // 2.0, 3.0, 3.1, ...
+        this._MAX_TEXTURE_SIZE  = MAX_TEXTURE_SIZE;
+        // --- OS ---
+        this._OS_NAME           = "";       // OS name. eg: "Android", "iOS", "Windows", "Mac", "Firefox", ""
+        this._OS_VERSION        = "";       // Detected OS version from UserAgent string. semver format "{{Major}},{{Minor}},{{Patch}}"
+        this._OS_FIRST_VERSION  = "0.0.0";  // OS first(release) version. semver
+        this._OS_FINAL_VERSION  = "0.0.0";  // OS final(end of life) version. semver
+        // --- BROWSER ---
+        this._USER_AGENT        = "";
+        this._BROWSER_NAME      = "";       // Base browser. "Chrome", "Firefox", "AOSP", "IE", "Safari", "WebKit", "Chrome for iOS"
+                                            //  AOSP: Android Browser, WebView, Amazon Silk
+                                            //  Chrome: Chromium WebView, SBrowser, Vivaldi, Amazon Silk
+        this._BROWSER_ENGINE    = "";       // Browser render engine. "Blink", "Trident", "Gecko", "WebKit"
+        this._BROWSER_VERSION   = "0.0.0";  // Browser version from UserAgent String. semver
+        this._LANGUAGE          = "en";     // Content language.
+        this._WEB_VIEW          = false;    // WebView
+        this._CHROME_TRIGGER    = false;    // Enable Chrome Trigger.
+        this._GPU_VERSION       = GPU_VERSION;
+        // --- DISPLAY ---
+        this._DISPLAY_DPR       = global["devicePixelRatio"] || 1.0;
+        this._DISPLAY_INCH      = 0;
+        this._DISPLAY_LONG      = Math.max(width, height);
+        this._DISPLAY_SHORT     = Math.min(width, height);
+        this._MAX_TOUCH_POINTS  = 0;
 
-Spec["has"]  = Spec_has;  // Spec.has(id:IDString):Boolean
-Spec["dump"] = Spec_dump; // Spec.dump(type:String = "modern"):DeviceIDArray
-
-Spec["THRESHOLD"] = { // threshold settings
-    "OUTMODED":             24, // 24 months was passed.
-    "LOW_END_CPU_CORES":     2, // dual core
-    "LOW_END_CPU_SPEED":   1.2, // 1.2 MHz
-    "LOW_END_GPU_GFLOPS":   19, // 19 GFLOPS
-};
-
-// --- implements ------------------------------------------
-function _init(ua, options) { // @bind this
-    var WebGLDetector       = global["WebModule"]["WebGLDetector"] || {};
-    var nav                 = global["navigator"] || {};
-    var device              = ua["DEVICE"];
-    var os                  = ua["OS"];
-    var osVersion           = parseFloat(ua["OS_VERSION"]);
-    // --- for Smart Phone ---
-    this._UNKNOWN           = true;
-    this._SOC               = "";
-    this._GPU               = "";
-    this._RAM               = 0;
-    this._BLE               = false;
-    this._NFC               = false;
-    this._OTG               = false;
-    this._ATOM              = false;
-    this._SIMD              = false;
-    this._H265_ENCODER      = false;
-    this._H265_DECODER      = false;
-    this._FORCE_TOUCH       = false;
-    this._FORCE_CLICK       = false;
-    this._MAX_THREADS       = options["MAX_THREADS"] ||
-                              Math.max(2, nav["hardwareConcurrency"] || 0);
-    this._MAX_TOUCH_POINTS  = options["MAX_TOUCH_POINTS"] || nav["maxTouchPoints"] || 0;
-    this._MAX_TEXTURE_SIZE  = WebGLDetector["MAX_TEXTURE_SIZE"] || 1024;
-    this._GLES              = 0.0;
-    this._METAL             = 0.0;
-    this._VULKAN            = 0.0;
-    this._LOW_END           = false;
-    this._OUTMODED          = false;
-    // --- for Feature Phone ---
-    this._FP_TLS            = false;
-    this._FP_UTF8           = false;
-    this._FP_COOKIE         = false;
-    this._FP_CERT_SHA1      = false;
-    this._FP_FLASH_LITE     = 0.0;
-    this._FP_MALFUNCTION    = false;
-    this._FP_DISPLAY_LONG   = false;
-    this._FP_DISPLAY_SHORT  = false;
-
-    if (device) {
-        if (CatalogFP && ua["FEATURE_PHONE"]) {
-            _initFP.call(this, ua, device);
-        } else if (Catalog) {
-            _initSP.call(this, ua, device, options);
+        if (global["navigator"]) {
+            this._CPU_CORES     = Math.max(this._CPU_CORES, navigator["hardwareConcurrency"] || 0);
+            Spec_setUserAgent.call(this, global["navigator"]["userAgent"]);
+        }
+        if (!mutable) {
+            Object.freeze(this);
         }
     }
-    if (os === "Android" && osVersion < 4.3) {
-        // BLE ready for Android 4.3+ (API Level 18+)
-        // https://developer.android.com/guide/topics/connectivity/bluetooth-le.html
-        this._BLE = false; // disable BLE
-    }
-    if (os === "Android" && osVersion < 4.0) {
-        // USB On-the-Go ready for Android 2.3.4+ (4.0.0+)
-        this._OTG = false; // disable OTG
-    }
-    if (os === "Android" && osVersion < 4.0) {
-        // Android 2.x, 3.x Browsers does not support multitouch events
-        // https://code.google.com/p/android/issues/detail?id=11909
-        this._MAX_TOUCH_POINTS = this._MAX_TOUCH_POINTS ? 1 : 0; // to Binary
-    }
-    if (os === "iOS" && osVersion >= 8.0 && this._GLES >= 3.1) {
-        // Metal support. PowerVR G6430/GX6450/GX6850 (Apple A7,A8,A8X,A9,A9X)
-        this._METAL = 1.0;
-    }
-    if (os === "Android" && osVersion >= 7.0 && this._GLES >= 3.1) {
-        // Vulkan support
-        this._VULKAN = 1.0;
-    }
-}
 
-function _initSP(ua, device, options) {
-    // [ SOC, DATE, OS_VERS, DISP1, DISP2, INCH, RAM, TOUCH, TAG ]
-    var record = Catalog["iOS"][device]     ||
-                 Catalog["Android"][device] ||
-              /* Catalog["Windows"][device] || */ null;
-    if (record) {
-        var primary_soc = record[0].split("/")[0]; // "Z3560/Z3580" -> "Z3560"
-        var tags = Catalog["DEVICE_TAGS"];
-        var soc  = Catalog["SOC"][primary_soc]; // [ CLOCK, CORES, GPU_ID ]
-        var gpu  = Catalog["GPU"][soc[0]];      // [ GFLOPS, TEXTURE, GPU_TAGS ]
-        var bits = record[8]; // tag bits
+    //{@dev
+    Spec["repository"] = "https://github.com/uupaa/Spec.js";
+    //}@dev
 
-        this._UNKNOWN           = false;
-        this._SOC               = record[0];
-        this._GPU               = soc[0];
-        this._RAM               = record[6] * 128;
-        this._BLE               = !!(bits & tags["BLE"]);
-        this._NFC               = !!(bits & tags["NFC"]);
-        this._OTG               = !!(bits & tags["OTG"]);
-        this._ATOM              = !!(bits & tags["ATOM"]);
-        this._SIMD              = !/^(T20|AP20|AP25)$/.test(primary_soc);
-        this._H265_ENCODER      = !!(bits & tags["H265E"]);
-        this._H265_DECODER      = !!(bits & tags["H265D"]);
-        this._FORCE_TOUCH       = !!(bits & tags["FORCE_TOUCH"]);
-        this._FORCE_CLICK       = !!(bits & tags["FORCE_CLICK"]);
-        this._MAX_TOUCH_POINTS  = options["MAX_TOUCH_POINTS"] || record[7];     // update
-        this._MAX_TEXTURE_SIZE  = options["MAX_TEXTURE_SIZE"] || gpu[1] * 1024; // update
-        this._GLES              = _getOpenGLESVersion(gpu[2]);
-        this._LOW_END           = _isLowEndCPU(soc) || _isLowEndGPU(gpu);
-        this._OUTMODED          = _isOutmodedDevice(record[1], record[2],
-                                                    options["DATE"] || Date.now());
-    }
-}
+    Spec["prototype"] = Object.create(Spec, {
+        "constructor":          { "value": Spec             }, // new Spec():Spec
+        // --- method ---
+        "has":                  { "value": Spec_has         }, // Spec#has(id:IDString):Boolean
+        "hasApp":               { "value": Spec_hasApp      }, // Spec#hasApp(name:AppNameString):Boolean
+        "hasFeature":           { "value": Spec_hasFeature  }, // Spec#hasFeature(name:FeatureNameString):Boolean
+        // --- property accessor ---
+        // --- DEVICE/SOC/CPU/GPU/APP ---
+        "DEVICE":               { "get":   function()  { return this._DEVICE_ID;        } },
+        "KNOWN_DEVICE":         { "get":   function()  { return this._KNOWN_DEVICE;     } },
+        "LOW_END_DEVICE":       { "get":   function()  { return this._LOW_END_DEVICE;   } },
+        "RAM":                  { "get":   function()  { return this._RAM;              } },
+        "SOC":                  { "get":   function()  { return this._SOC_ID;           } },
+        "CPU_CLOCK":            { "get":   function()  { return this._CPU_CLOCK;        } },
+        "CPU_CORES":            { "get":   function()  { return this._CPU_CORES;        } },
+        "GPU":                  { "get":   function()  { return this._GPU_ID;           } },
+        "GPU_GFLOPS":           { "get":   function()  { return this._GPU_GFLOPS;       } },
+        "LOW_END_GPU":          { "get":   function()  { return this._LOW_END_GPU;      } },
+        "WEBGL_CONTEXT":        { "get":   function()  { return WEBGL_CONTEXT;          } },
+        "MAX_TEXTURE_SIZE":     { "get":   function()  { return this._MAX_TEXTURE_SIZE; } },
+        "APP":                  { "get":   function()  { return this._APP;              } },
+        // --- OS ---
+        "OS":                   { "get":   function()  { return this._OS_NAME;          } },
+        "OS_VERSION":           { "get":   function()  { return this._OS_VERSION;       } },
+        "OS_FIRST_VERSION":     { "get":   function()  { return this._OS_FIRST_VERSION; } },
+        "OS_FINAL_VERSION":     { "get":   function()  { return this._OS_FINAL_VERSION; } },
+        // --- BROWSER ---
+        "USER_AGENT":           { "get":   function()  { return this._USER_AGENT;       },
+                                  "set":   Spec_setUserAgent },
+        "BROWSER":              { "get":   function()  { return this._BROWSER_NAME;     } },
+        "BROWSER_ENGINE":       { "get":   function()  { return this._BROWSER_ENGINE;   } },
+        "BROWSER_VERSION":      { "get":   function()  { return this._BROWSER_VERSION;  } },
+        "LANGUAGE":             { "get":   function()  { return this._LANGUAGE;         } },
+        "WEB_VIEW":             { "get":   function()  { return this._WEB_VIEW;         } },
+        "CHROME_TRIGGER":       { "get":   function()  { return this._CHROME_TRIGGER;   } },
+        // --- DISPLAY ---
+        "DISPLAY_DPR":          { "get":   function()  { return this._DISPLAY_DPR;      },
+                                  "set":   function(v) { this._DISPLAY_DPR = v;         } },
+        "DISPLAY_INCH":         { "get":   function()  { return this._DISPLAY_INCH;     } },
+        "DISPLAY_LONG":         { "get":   function()  { return this._DISPLAY_LONG;     },
+                                  "set":   function(v) { this._DISPLAY_LONG = v;        } },
+        "DISPLAY_SHORT":        { "get":   function()  { return this._DISPLAY_SHORT;    },
+                                  "set":   function(v) { this._DISPLAY_SHORT = v;       } },
+        "MAX_TOUCH_POINTS":     { "get":   function()  { return this._MAX_TOUCH_POINTS; } },
+        // --- DEVELOP ---
+        "GPU_VERSION":          { "get":   function()  { return GPU_VERSION;            } },
+        "GLES_VERSION":         { "get":   function()  { return GLES_VERSION;           } },
+        "GPU_FINGERPRINT":      { "get":   function()  { return GPU_FINGERPRINT;        } },
+        "CANVAS_FINGERPRINT":   { "get":   function()  { return CANVAS_FINGERPRINT;     } },
+    });
 
-function _getOpenGLESVersion(tags) { // @arg UINT32
-    if (tags & Catalog["GPU_TAGS"]["GLES33"]) { return 3.3; }
-    if (tags & Catalog["GPU_TAGS"]["GLES32"]) { return 3.2; }
-    if (tags & Catalog["GPU_TAGS"]["GLES31"]) { return 3.1; }
-    if (tags & Catalog["GPU_TAGS"]["GLES30"]) { return 3.0; }
-    if (tags & Catalog["GPU_TAGS"]["GLES20"]) { return 2.0; }
-    if (tags & Catalog["GPU_TAGS"]["GLES11"]) { return 1.1; }
-    return 0.0;
-}
-
-function _initFP(ua, device) {
-    // [ FLASH_LITE_VERSION, DISP1, DISP2, BROWSER_VERSION ]
-    var record = CatalogFP["DOCOMO"][device]   ||
-                 CatalogFP["KDDI"][device]     ||
-                 CatalogFP["SOFTBANK"][device] || null;
-    if (record) {
-        var fpBrowserVersion    = record[3];
-        var tags                = CatalogFP["DEVICE_TAGS"];
-        var bits                = record[4]; // tag bits
-
-        this._UNKNOWN           = false;
-        this._FP_TLS            = _canTLS(ua["CARRIER"], fpBrowserVersion);
-        this._FP_UTF8           = _canUTF8(ua["CARRIER"], fpBrowserVersion);
-        this._FP_COOKIE         = _canCookie(ua["CARRIER"], fpBrowserVersion);
-        this._FP_CERT_SHA1      = !!(bits & tags["CERT_SHA1"]);
-        this._FP_FLASH_LITE     = record[0];
-        this._FP_MALFUNCTION    = !!(bits & tags["MALFUNCTION"]) || this._FP_CERT_SHA1;
-        this._FP_DISPLAY_LONG   = Math.max(record[1], record[2]);
-        this._FP_DISPLAY_SHORT  = Math.min(record[1], record[2]);
-    }
-}
-
-function Spec_has(id) { // @arg IDString - DEVICE ID or SOC ID or GPU ID
-                        // @ret Boolean
-    if (Catalog) {
-        return id in Catalog["iOS"]     ||
-               id in Catalog["Android"] ||
-            // id in Catalog["Windows"] ||
-               id in Catalog["SOC"]     ||
-               id in Catalog["GPU"];
-    }
-    if (CatalogFP) {
-        return id in CatalogFP["DOCOMO"] ||
-               id in CatalogFP["KDDI"]   ||
-               id in CatalogFP["SOFTBANK"];
-    }
-    return false;
-}
-
-function Spec_dump(type,      // @arg String = "modern" - "modern", "lowend", "outmoded", "onehand", "bothhands"
-                   options) { // @arg Object = null - { DATE }
-                              // @ret DeviceIDArray
-//{@dev
-    if (VERIFY) {
-        $valid($type(type,    "String|omit"), Spec_dump, "type");
-        $valid($type(options, "Object|omit"), Spec_dump, "options");
-        $valid($some(type,    "modern|lowend|outdated|onehand|bothhands|outmoded"), Spec_dump, "type");
-    }
-//}@dev
-
-    options = options || {};
-
-    var now = options["DATE"] || Date.now();
-    var fn = {
-            "modern":    _modern,
-            "lowend":    _lowend,
-            "outmoded":  _outmoded,
-            "outdated":  _outmoded, // [DEPRECATED]
-            "onehand":   _isOnehandDevice,
-            "bothhands": _isBothhandsDevice,
-        }[type || "modern"];
-
-    return ["iOS", "Android"].reduce(function(result, os) {
-        for (var id in Catalog[os]) {
-            var dev = Catalog[os][id];
-            var primary_soc = dev[0].split("/")[0]; // "Z3560/Z3580" -> "Z3560"
-            var soc = Catalog["SOC"][primary_soc];  // [ CLOCK, CORES, GPU_ID ]
-            var gpu = Catalog["GPU"][soc[0]];       // [ GFLOPS, TEXTURE_SIZE, GPU_TAGS ]
-
-            if (fn(dev, soc, gpu, os)) {
-                result.push(id);
+    // --- implements ------------------------------------------
+    function _detectCanvas() {
+        var node = document.createElement("canvas");
+        if (node) {
+            CANVAS_FINGERPRINT = _getCanvasFingerprint();
+            for (var i = 0, iz = WEBGL_CONTEXTS.length; i < iz; ++i) {
+                var token = WEBGL_CONTEXTS[i];
+                var gl = node.getContext(token);
+                if (gl) {
+                    WEBGL_CONTEXT = token;
+                    GPU_VERSION = gl.getParameter(gl.VERSION);
+                    if (Hash) {
+                        GPU_FINGERPRINT = Hash["XXHash"](Hash["STR_U8A"](GPU_VERSION));
+                    }
+                    MAX_TEXTURE_SIZE = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+                    break;
+                }
             }
         }
-        return result;
-    }, []);
-
-    function _modern(dev, soc, gpu) {
-        return !_isLowEndCPU(soc) && !_isLowEndGPU(gpu) &&
-               !_isOutmodedDevice(dev[1], dev[2], now);
     }
-    function _lowend(dev, soc, gpu) {
-        return _isLowEndCPU(soc) || _isLowEndGPU(gpu);
-    }
-    function _outmoded(dev) {
-        return _isOutmodedDevice(dev[1], dev[2], now);
-    }
-}
 
-function _isLowEndCPU(soc) {
-    return soc[1] <= Spec["THRESHOLD"]["LOW_END_CPU_SPEED"] &&
-           soc[2] <= Spec["THRESHOLD"]["LOW_END_CPU_CORES"];
-}
-function _isLowEndGPU(gpu) {
-    return gpu[0] <= Spec["THRESHOLD"]["LOW_END_GPU_GFLOPS"];
-}
-function _isOnehandDevice(dev) {
-    return dev[5] <= 4.5; // onhand device <= 4.5 inch
-}
-function _isBothhandsDevice(dev) {
-    return !_isOnehandDevice(dev);
-}
-function _isOutmodedDevice(yymm,       // @arg Integer - device release date. yymm
-                           osVersions, // @arg String - OS version. "234-404", "{{IN_RELEASE}}-{{IN_LAST_UPDATE}}"
-                           now) {      // @arg Integer - current time.
-                                       // @ret Boolean
-    var versions = osVersions.split("-"); // ["234", "404"]
-    var firstVersion = versions[0];
-    var finalVersion = versions[1] || "9999";
-    var outmoded = Spec["THRESHOLD"]["OUTMODED"];
-    var month = 31 * 24 * 60 * 60 * 1000;
-    var releaseDate = new Date(2000 + ((yymm / 100) | 0), (yymm % 100) - 1, 1).getTime();
+    function Spec_has(id) { // @arg IDString - DEVICE ID or SOC ID or GPU ID. ignore case
+                            // @ret Boolean
+        id = id.toUpperCase();
+        return (id in Catalog["DEVICE"]) ||
+               (id in Catalog["SOC"])    ||
+               (id in Catalog["GPU"]);
+    }
 
-    // --- DESERT DEVICE ---
-    // Devices that even once has not been updated.
-    if (now > releaseDate + (outmoded + 1) * month) {
-        if (firstVersion === finalVersion) { // This device has not been version-up even once.
-            return true;
+    function Spec_hasApp(name) { // @arg AppNameString - Preinstalled Application name. ignore case.
+                                 //      "AOSP", "SBrowser", "Chrome", "ChromeWebView"
+                                 // @ret Boolean
+        return !!(this._APP & Catalog["APP"][name.toUpperCase()]);
+    }
+
+    function Spec_hasFeature(name) { // @arg FeatureNameString - Feature name. ignore case.
+                                     //      "iOS", "FirefoxOS", "Kindle", "Windows", "ARM", "Intel", "64bit", "BLE", "NFC"
+                                     // @ret Boolean
+        var value = Catalog["FEATURE"][name.toUpperCase()];
+        if (value) {
+            return !!( (this._FEATURE.DEVICE & value) ||
+                       (this._FEATURE.SOC    & value) ||
+                       (this._FEATURE.GPU    & value) );
+        }
+        return false;
+    }
+
+    function Spec_setUserAgent(ua) { // @arg UserAgentString
+        if (ua && this._USER_AGENT !== ua) {
+            var osName      = _detectOSName(ua);                // (Android|iOS|Windows|Mac|Firefox)
+            var osVer       = _detectOSVersion(osName, ua);     // SemverString("major.minor.patch")
+            var browserName = _detectBrowserName(osName, ua);   // (Chrome|Firefox|AOSP|IE|Safari|WebKit|Chrome for iOS)
+            var deviceID    = _detectDeviceID.call(this, osName, ua, parseFloat(osVer));
+
+            this._DEVICE_ID       = deviceID;
+            this._KNOWN_DEVICE    = true;
+            this._OS_NAME         = osName;
+            this._OS_VERSION      = osVer;
+            this._USER_AGENT      = ua;
+            this._BROWSER_NAME    = browserName;
+            this._BROWSER_ENGINE  = BROWSER_ENGINES[browserName] || "";     // (Blink|Gecko|Trident|WebKit)
+            this._BROWSER_VERSION = _detectBrowserVersion(browserName, ua); // SemverString("major.minor.patch")
+            if (deviceID && osName) {
+                _collectDeviceInfo.call(this, deviceID, osName);
+            }
+            if (_runOnNodeWebKit || _runOnBrowser) {
+                var nav = global["navigator"] || {};
+                var ver = parseFloat(osVer);
+                var fullScreen = document["fullscreenEnabled"] ||
+                                 document["webkitFullscreenEnabled"] || false;
+
+                this._LANGUAGE = (nav["language"] || "en").split("-", 1)[0]; // "en-us" -> "en"
+                this._WEB_VIEW = !!(browserName === "Chrome" && !fullScreen);
+                this._CHROME_TRIGGER = !this._WEB_VIEW && browserName === "AOSP" && ver >= 4 && ver < 4.4;
+            }
         }
     }
-    // --- WELL-KNOWN DEVICE / POPULAR DEVICE ---
-    // Updated device, 6 months extension.
-    if (now > releaseDate + (outmoded + 1 + 6) * month) {
-        return true;
+    function _collectDeviceInfo(deviceID, // "Nexus 5"
+                                osName) { // "Android"
+        var devs = Catalog["DEVICE"][deviceID]; // [ SOC_ID, OS_VERS, DISP1, DISP2, INCH, RAM, TOUCH, FEATURE, LIMIT, APP ]
+        if (!devs) { // unknown device -> alternative device id
+            this._KNOWN_DEVICE = false;
+            deviceID = ALT_DEVICE_ID[osName] || deviceID;
+            devs = Catalog["DEVICE"][deviceID];
+        }
+        if (devs) {
+            var nav    = global["navigator"] || {};
+            var socID  = devs[0];
+            var osVers = devs[1].split("-"); // ["234", "404"]
+            var socs   = Catalog["SOC"][socID]; // [ CLOCK, CORES, GPU_ID, FEATURE, LIMIT ]
+            var gpuID  = socs[2];
+            var gpus   = Catalog["GPU"][gpuID]; // [ GFLOPS, GLES, TEXTURE, FEATURE, LIMIT ]
+
+            this._RAM               = devs[5] * 128;
+            this._FEATURE.DEVICE    = devs[7];
+            this._FEATURE.SOC       = socs[3];
+            this._FEATURE.GPU       = gpus[3];
+            this._LIMIT.DEVICE      = devs[8];
+            this._LIMIT.SOC         = socs[4];
+            this._LIMIT.GPU         = gpus[4];
+            this._LOW_END_DEVICE    = !!(this._LIMIT.DEVICE & Catalog["LIMIT"]["LOW_END"]);
+            this._LOW_END_GPU       = !!(this._LIMIT.GPU    & Catalog["LIMIT"]["LOW_END"]);
+            this._DISPLAY_SHORT     = devs[2];
+            this._DISPLAY_LONG      = devs[3];
+            this._DISPLAY_INCH      = devs[4];
+            this._APP               = devs[9];
+            this._SOC_ID            = socID;
+            this._CPU_CLOCK         = socs[0];
+            // http://trac.webkit.org/browser/trunk/Source/WebCore/page/Navigator.cpp#L143
+            // protect fingerprinting, if (iOS) { maxCoresToReport = 2 }
+            this._CPU_CORES         = Math.max(this._CPU_CORES, nav["hardwareConcurrency"] || 0, socs[1]);
+            this._GPU_ID            = gpuID;
+            this._GPU_GFLOPS        = gpus[0];
+            this._OS_FIRST_VERSION  = _toSemver(osVers[0]);
+            this._OS_FINAL_VERSION  = _toSemver(osVers[1] || "9999");
+            this._GLES_VERSION      = gpus[1] || 0.0;
+            this._MAX_TEXTURE_SIZE  = this._MAX_TEXTURE_SIZE || ((gpus[2] || 4) * 1024); // default 4096
+            this._MAX_TOUCH_POINTS  = !devs[6] ? 0 : Math.max( nav["maxTouchPoints"] || 0, devs[6] );
+        }
+        function _toSemver(number) {
+            var s = (10000 + parseInt(number)).toString();
+            return parseInt(s[1] + s[2], 10) + "." + s[3] + "." + s[4];
+        }
     }
-    return false;
-}
 
-function _canUTF8(carrier, fpBrowserVersion) { // @ret Boolean
-    switch (carrier) {
-    case "DOCOMO":
-        // | Charset    | i-mode 1.0  | i-mode 2.0 | i-mode 2.1 |
-        // |------------|-------------|------------|------------|
-        // | Shift_JIS  | OK          | OK         | OK         |
-        // | UTF-8      |             | OK         | OK         |
-        return fpBrowserVersion >= 2.0;
-    case "KDDI":
-        // | Charset           | Browser 6.2 | Browser 7.2 |
-        // |-------------------|-------------|-------------|
-        // | Shift_JIS         | OK          | OK          |
-        // | UTF-8 (HTML)      |             | WRONG       |
-        // | UTF-8 (HTML+SSL)  |             | OK          |
-        // | UTF-8 (XHTML)     |             | OK          |
-        // | UTF-8 (XHTML+SSL) |             | OK          |
-        return fpBrowserVersion >= 7.2;
-    case "SOFTBANK":
-        // | Charset    | Browser     |
-        // |------------|-------------|
-        // | Shift_JIS  | OK          |
-        // | UTF-8      | OK          |
-        // | EUC-JP     | OK          |
-        return true;
+    function _detectOSName(ua) {
+        switch (true) {
+        case /Android/.test(ua):            return "Android";
+        case /iPhone|iPad|iPod/.test(ua):   return "iOS";
+        case /Windows/.test(ua):            return "Windows";
+        case /Mac OS X/.test(ua):           return "Mac";
+        case /Firefox/.test(ua):            return "Firefox";
+        }
+        return "";
     }
-    return false;
-}
-
-function _canTLS(carrier, fpBrowserVersion) { // @ret Boolean - TLS 1.0 supported
-    switch (carrier) {
-    case "DOCOMO":
-        // https://www.nttdocomo.co.jp/service/developer/make/content/ssl/spec/index.html
-        //
-        // | SSL/TLS    | i-mode 1.0  | i-mode 2.0  | i-mode 2.1 |
-        // |------------|-------------|-------------|------------|
-        // | SSL 2.0    | OK          | OK          | OK         |
-        // | SSL 3.0    | OK          | OK          | OK         |
-        // | TLS 1.0    |             | OK          | OK         |
-        return fpBrowserVersion >= 2.0;
-    case "KDDI":
-        // http://www.au.kddi.com/ezfactory/web/pdf/contents_guide.pdf (P42)
-        //
-        // | SSL/TLS    | Browser 6.2 | Browser 7.2 |
-        // |------------|-------------|-------------|
-        // | SSL 3.0    | OK          | OK          |
-        // | TLS 1.0    | OK          | OK          |
-        return true;
-    case "SOFTBANK":
-        // http://creation.mb.softbank.jp/mc/tech/tech_web/web_ssl.html
-        //
-        // | SSL/TLS    | Browser     |
-        // |------------|-------------|
-        // | SSL 3.0    | OK          |
-        // | TLS 1.0    | OK          |
-        return true;
+    function _detectOSVersion(osName, ua) {
+        switch (osName) {
+        case "Android": return _getVersion("Android", ua);
+        case "iOS":     return _getVersion(/OS /, ua);
+        case "Windows": return _getVersion(/Phone/.test(ua) ? /Windows Phone (?:OS )?/
+                                                            : /Windows NT/, ua);
+        case "Mac":     return _getVersion(/Mac OS X /, ua);
+        case "Firefox":
+            // https://developer.mozilla.org/ja/docs/Gecko_user_agent_string_reference
+            var ver = parseFloat(_getVersion("Gecko/", ua)); // 0.0
+            if (ver === 32.0) {
+                return "2.0.0";
+            }
+        }
+        return "0.0.0";
     }
-    return false;
-}
-
-function _canCookie(carrier, fpBrowserVersion) { // @ret Boolean
-    switch (carrier) {
-    case "DOCOMO":
-        // |            | i-mode 1.0  | i-mode 2.0   | i-mode 2.1 |
-        // |------------|-------------|--------------|------------|
-        // | Cookie     |             | OK           | OK         |
-        return fpBrowserVersion >= 2.0;
-    case "KDDI":
-        // |            | Browser 6.2 | Browser 7.2  |
-        // |------------|-------------|--------------|
-        // | Cookie     | OK          | OK           |
-        return fpBrowserVersion >= 7.2;
-    case "SOFTBANK":
-        // |            | Browser     |
-        // |------------|-------------|
-        // | Cookie     | OK          |
-        return true;
+    function _detectBrowserName(osName, ua) {
+        if (!osName) { return ""; }
+        switch (true) {
+        case /CriOS/.test(ua):        return "Chrome for iOS"; // https://developer.chrome.com/multidevice/user-agent
+        case /Chrome/.test(ua):       return "Chrome";
+        case /Firefox/.test(ua):      return "Firefox";
+        case /Android/.test(ua):      return "AOSP"; // AOSP stock browser. aka: Android default browser
+        case /MSIE|Trident/.test(ua): return "IE";
+        case /Safari/.test(ua):       return "Safari";
+        case /AppleWebKit/.test(ua):  return "WebKit";
+        }
+        return "";
     }
-    return false;
-}
+    function _detectBrowserVersion(browserName, ua) {
+        switch (browserName) {
+        case "Chrome":  return _getVersion("Chrome/", ua);
+        case "Firefox": return _getVersion("Firefox/", ua);
+        case "AOSP":    return _getVersion(/Silk/.test(ua) ? "Silk/" : "Version/", ua);
+        case "IE":      return /IEMobile/.test(ua) ? _getVersion("IEMobile/", ua)
+                             : /MSIE/.test(ua)     ? _getVersion("MSIE ", ua) // IE 10.
+                                                   : _getVersion("rv:", ua);  // IE 11+
+        case "Safari":  return _getVersion("Version/", ua);
+        case "Chrome for iOS":
+                        return _getVersion("CriOS/", ua);
+        }
+        return "0.0.0";
+    }
+    function _getVersion(token, ua) { // @ret SemverString - "0.0.0"
+        try {
+            return _normalizeSemverString( ua.split(token)[1].trim().split(/[^\w\.]/)[0] );
+        } catch ( o_O ) {}
+        return "0.0.0";
+    }
+    function _normalizeSemverString(version) { // @arg String - "Major.Minor.Patch"
+                                               // @ret SemverString - "Major.Minor.Patch"
+        var ary = version.split(/[\._]/); // "1_2_3" -> ["1", "2", "3"]
+                                          // "1.2.3" -> ["1", "2", "3"]
+        return ( parseInt(ary[0], 10) || 0 ) + "." +
+               ( parseInt(ary[1], 10) || 0 ) + "." +
+               ( parseInt(ary[2], 10) || 0 );
+    }
+    function _detectDeviceID(osName, ua, osVer) {
+        switch (osName) {
+        case "Android": return _getAndroidDeviceID.call(this, ua);
+        case "iOS":     return _getiOSDeviceID.call(this, ua, osVer);
+        case "Windows": return /Windows Phone/.test(ua) ? _getWindowsPhoneDeviceID(ua, osVer) : "";
+        case "Firefox": return _getFirefoxOSDeviceID(ua);
+        }
+        return "";
+    }
+    function _getAndroidDeviceID(ua) {
+        if (/Firefox/.test(ua)) { return ""; }
+        try {
+            var result = ua.split("Build/")[0].split(";").slice(-1).join().trim().
+                         replace(/^SonyEricsson/, "").replace(/ 4G$/, "");
 
-return Spec; // return entity
+            if (result === "Nexus 7") {
+                return this._DISPLAY_DPR < 2 ? "Nexus 7"      // Nexus 7 (2012)
+                                             : "Nexus 7 2nd"; // Nexus 7 (2013)
+            }
+            return result;
+        } catch ( o_O ) {}
+        return "";
+    }
+    function _getiOSDeviceID(ua, osVer) {
+        var retina   = this._DISPLAY_DPR >= 2;
+        var longEdge = Math.max(this._DISPLAY_LONG, this._DISPLAY_SHORT); // iPhone 4S: 480, iPhone 5: 568
+      //var SGX535 = /535/.test(GPU_VERSION); // iPhone 3GS, iPhone 4
+        var SGX543 = /543/.test(GPU_VERSION); // iPhone 4s/5/5c, iPad 2/3, iPad mini
+        var SGX554 = /554/.test(GPU_VERSION); // iPad 4
+        var A7     = /A7/.test(GPU_VERSION);  // iPhone 5s, iPad mini 2/3, iPad Air
+        var A8     = /A8/.test(GPU_VERSION);  // iPhone 6/6+, iPad Air 2
 
-});
+        if (/iPhone/.test(ua)) {
+            return !retina ? "iPhone 3GS"
+                 : longEdge <= 480 ? (SGX543 || osVer >= 8 ? "iPhone 4S"
+                                                           : "iPhone 4") // iPhone 4 stopped in iOS 7.
+                 : longEdge <= 568 ? (A7 ? "iPhone 5s"
+                                         : "iPhone 5") // iPhone 5c
+                 : longEdge <= 667 ? "iPhone 6"
+                 : longEdge <= 736 ? "iPhone 6 Plus" : "";
+        } else if (/iPad/.test(ua)) {
+            if (!retina) { return "iPad 2"; } // iPad 1/2, iPad mini
+            if (SGX543)  { return "iPad 3"; }
+            if (SGX554)  { return "iPad 4"; }
+            if (A7)      { return "iPad mini 2"; } // iPad mini 3, iPad Air
+            if (A8)      { return "iPad Air 2";  }
+            return "iPad 3";
+        } else if (/iPod/.test(ua)) {
+            return longEdge <= 480 ? (!retina ? "iPod touch 3"
+                                              : "iPod touch 4")
+                                   : "iPod touch 5";
+        }
+        return "";
+    }
+    function _getWindowsPhoneDeviceID(ua, osVer) {
+        // Dispatches to Nokia device, if not Nokia device.
+        // Because of them.
+        //  - http://thenextweb.com/microsoft/2013/11/27/nokia-now-controls-90-windows-phone-8-market-low-end-lumia-520-accounting-35-share/
+        //  - http://www.techradar.com/news/phone-and-communications/mobile-phones/nokia-ends-2013-with-92-of-windows-phone-market-1211347
+        try {
+            return /Lumia/.test(ua) ? ("Lumia " + ua.split("Lumia ")[1].split(/[^\w\.]/)[0])
+                                    : osVer <= 8.0 ? "Lumia 520" // Windows Phone 8.0
+                                    : "Lumia 630";
+        } catch ( o_O ) {}
+        return "";
+    }
+    function _getFirefoxOSDeviceID(ua) {
+        try {
+            if (/Mobile;/.test(ua) && !/Mobile; rv:/.test(ua)) {
+                return ua.split("; rv:")[0].split(";").slice(-1).join().trim();
+            }
+        } catch ( o_O ) {}
+        return "";
+    }
 
+    function _getCanvasFingerprint() {
+        if (Hash && Hash["XXHash"]) {
+            try {
+                // https://www.browserleaks.com/canvas#how-does-it-work
+                var canvas = document.createElement("canvas");
+                canvas.width = 220;
+                canvas.height = 22;
+
+                var ctx = canvas.getContext("2d");
+                var txt = "https://github.com/uupaa/Spec.js";
+
+                ctx.textBaseline = "top";
+                ctx.font = "14px 'Arial'";
+                ctx.textBaseline = "alphabetic";
+                ctx.fillStyle = "#f60";
+                ctx.fillRect(125,1,62,20);
+                ctx.fillStyle = "#069";
+                ctx.fillText(txt, 2, 15);
+                ctx.fillStyle = "rgba(102, 204, 0, 0.7)";
+                ctx.fillText(txt, 4, 17);
+                var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                return Hash["XXHash"](new Uint8Array(imageData.data.buffer));
+            } catch (o_O) {}
+        }
+        return 0;
+    }
+
+    // --- validate / assertions -------------------------------
+    //{@dev
+    //function $valid(val, fn, hint) { if (global["Valid"]) { global["Valid"](val, fn, hint); } }
+    //function $type(obj, type) { return global["Valid"] ? global["Valid"].type(obj, type) : true; }
+    //function $keys(obj, str) { return global["Valid"] ? global["Valid"].keys(obj, str) : true; }
+    //function $some(val, str, ignore) { return global["Valid"] ? global["Valid"].some(val, str, ignore) : true; }
+    //function $args(fn, args) { if (global["Valid"]) { global["Valid"].args(fn, args); } }
+    //}@dev
+
+    // --- exports ---------------------------------------------
+    if (typeof module !== "undefined") {
+        module["exports"] = Spec;
+    }
+    global["Spec" in global ? "Spec_" : "Spec"] = Spec; // switch module. http://git.io/Minify
+
+    })((this || 0).self || global); // WebModule idiom. http://git.io/WebModule
