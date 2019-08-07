@@ -8,7 +8,7 @@ window.addEventListener('load', function () {
 document.addEventListener('DOMContentLoaded', function () {
 	// タッチ開始時の処理
 	document.addEventListener('touchstart', function onTouchStart(event) {
-		if (event.touches.length !== 1) return false;
+		if (event.touches.length !== 3) return false;
 
 		// ブロックの認識を開始する
 		// エラーメッセージを一旦非表示に
