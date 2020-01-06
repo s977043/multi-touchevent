@@ -86,6 +86,6 @@
 
 		});
 		*/
-
+		detectHandler && detectHandler(true);
 	};
 })(window, jQuery, Spec);
