@@ -1,0 +1,154 @@
+@-webkit-keyframes fade-in-anime {
+    0% {
+      opacity: 0;
+    }
+    100% {
+      opacity: 1;
+    }
+  }
+
+  @keyframes fade-in-anime {
+    0% {
+      opacity: 0;
+    }
+    100% {
+      opacity: 1;
+    }
+  }
+
+  @-webkit-keyframes rolling-anime {
+    0% {
+      -webkit-transform: rotate(0deg);
+              transform: rotate(0deg);
+    }
+    100% {
+      -webkit-transform: rotate(360deg);
+              transform: rotate(360deg);
+    }
+  }
+
+  @keyframes rolling-anime {
+    0% {
+      -webkit-transform: rotate(0deg);
+              transform: rotate(0deg);
+    }
+    100% {
+      -webkit-transform: rotate(360deg);
+              transform: rotate(360deg);
+    }
+  }
+
+  html, body {
+    height: 100%;
+  }
+
+  body {
+    background-color: #959363;
+    background-image: url(img/ticket.png);
+    background-repeat: no-repeat;
+    background-size: contain;
+    background-position: center center;
+  }
+
+  .error-message {
+    display: none;
+    margin: auto;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-image: url(img/error.png);
+    background-repeat: no-repeat;
+    background-size: contain;
+    background-position: center center;
+  }
+
+  .stamp_p {
+    display: none;
+    position: absolute;
+    background-image: url(img/ticket_stamp.png);
+    background-repeat: no-repeat;
+    background-size: contain;
+    background-position: center center;
+    width: 90vw;
+    height: 90vh;
+  }
+  @media screen and (max-width: 320px) and (max-width: 480px) {
+    .box {
+      width: 250px;
+      height: 250px;
+    }
+  }
+
+  .loading {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: #000000;
+    opacity: 0.8;
+  }
+
+  .loading:after {
+    content: "";
+    position: absolute;
+    width: 183px;
+    height: 183px;
+    left: calc(50% - 183px / 2);
+    top: calc(50% - 183px / 2);
+    background-image: url(img/load.png);
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: center center;
+    -webkit-animation-name: rolling-anime;
+            animation-name: rolling-anime;
+    -webkit-animation-iteration-count: infinite;
+            animation-iteration-count: infinite;
+    -webkit-animation-duration: 2s;
+            animation-duration: 2s;
+    -webkit-animation-timing-function: linear;
+            animation-timing-function: linear;
+  }
+
+  .overlay-white, .overlay-black {
+    display: none;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: #ffffff;
+  }
+
+  .overlay-black {
+    background-color: rgba(0, 0, 0, 0.6);
+  }
+
+  .flush {
+    -webkit-animation-name: fade-in-anime;
+            animation-name: fade-in-anime;
+    -webkit-animation-iteration-count: 2;
+            animation-iteration-count: 2;
+    -webkit-animation-duration: 0.2s;
+            animation-duration: 0.2s;
+    -webkit-animation-direction: alternate;
+            animation-direction: alternate;
+    -webkit-animation-timing-function: ease-out;
+            animation-timing-function: ease-out;
+    -webkit-animation-fill-mode: both;
+            animation-fill-mode: both;
+  }
+
+  .fade-in {
+    -webkit-animation-name: fade-in-anime;
+            animation-name: fade-in-anime;
+    -webkit-animation-iteration-count: 1;
+            animation-iteration-count: 1;
+    -webkit-animation-duration: 0.4s;
+            animation-duration: 0.4s;
+    -webkit-animation-timing-function: ease-out;
+            animation-timing-function: ease-out;
+    -webkit-animation-fill-mode: both;
+            animation-fill-mode: both;
+  }
