@@ -99,22 +99,6 @@
 			t3.pageX = t1[0].pageX + 20.5;
 			t3.pageY = t1[0].pageY + 25.5;
 
-<<<<<<< Updated upstream
-for (var i = 0; i < 3 ; i++){
-	if ( i== 0) {
-		var t = t1;
-	} else 	if ( i== 1) {
-		var t = t2;
-	}else {
-		var t = t3;
-	}
-	*/
-  var t = touches[i];
-  s += "[" + t.identifier + "]";
-  s += "x=" + t.pageX + ",";
-  s += "y=" + t.pageY + "<br>";
-}
-=======
 			for (var i = 0; i < 3 ; i++){
 				if ( i== 0) {
 					var t = t1;
@@ -129,7 +113,6 @@ for (var i = 0; i < 3 ; i++){
 			s += "x=" + t.pageX + ",";
 			s += "y=" + t.pageY + "<br>";
 		}
->>>>>>> Stashed changes
 
 		var a = Math.sqrt(Math.pow(touches[1].pageX - touches[0].pageX, 2) + Math.pow(touches[1].pageY - touches[0].pageY, 2));
 		var b = Math.sqrt(Math.pow(touches[2].pageX - touches[1].pageX, 2) + Math.pow(touches[2].pageY - touches[1].pageY, 2));
