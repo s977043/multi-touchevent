@@ -117,8 +117,8 @@
 		var a = Math.sqrt(Math.pow(touches[1].pageX - touches[0].pageX, 2) + Math.pow(touches[1].pageY - touches[0].pageY, 2));
 		var b = Math.sqrt(Math.pow(touches[2].pageX - touches[1].pageX, 2) + Math.pow(touches[2].pageY - touches[1].pageY, 2));
 		var c = Math.sqrt(Math.pow(touches[0].pageX - touches[2].pageX, 2) + Math.pow(touches[0].pageY - touches[2].pageY, 2));
-		//  var c = Math.sqrt( Math.pow( touches[3].pageX - touches[2].pageX , 2 ) + Math.pow( touches[3].pageY - touches[2].pageY, 2 ) ) ;
-		//  var d = Math.sqrt( Math.pow( touches[0].pageX - touches[3].pageX , 2 ) + Math.pow( touches[0].pageY - touches[3].pageY, 2 ) ) ;
+		// var c = Math.sqrt( Math.pow( touches[3].pageX - touches[2].pageX , 2 ) + Math.pow( touches[3].pageY - touches[2].pageY, 2 ) ) ;
+		// var d = Math.sqrt( Math.pow( touches[0].pageX - touches[3].pageX , 2 ) + Math.pow( touches[0].pageY - touches[3].pageY, 2 ) ) ;
 
 		var abc = a + b + c;
 
@@ -126,7 +126,7 @@
 		s += "2→3の距離：" + b + "(" + b / abc + ") <br>";
 		s += "3→1の距離 ：" + c + "(" + c / abc + ") <br>";
 		s += "1→2→3の距離：" + abc + "(" + abc / abc + ") <br>";
-		//  s += "4-1 ：" + d + "<br>";
+		// s += "4-1 ：" + d + "<br>";
 
 		document.getElementById("debug_area").innerHTML = s;
 
