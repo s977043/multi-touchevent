@@ -34,9 +34,9 @@ document.addEventListener('DOMContentLoaded', function () {
 				// ブロックを表示する
 
 				stamp.style.display = 'block';
-//				stamp.style.left = block.centerX + 'px';
-//				stamp.style.top = block.centerY + 'px';
-//				stamp.style.transform = stamp.style.webkitTransform = 'translate(-50%, -50%) rotate(' + block.rotation + 'rad)';
+				//				stamp.style.left = block.centerX + 'px';
+				//				stamp.style.top = block.centerY + 'px';
+				//				stamp.style.transform = stamp.style.webkitTransform = 'translate(-50%, -50%) rotate(' + block.rotation + 'rad)';
 
 				// タッチイベントを取り除く
 				document.removeEventListener('touchstart', onTouchStart);
@@ -55,14 +55,14 @@ document.addEventListener('DOMContentLoaded', function () {
 					error.style.display = 'block';
 				}
 			});
-		} catch( e ) {
+		} catch (e) {
 			// エラーを表示
 			blackout.style.display = 'none';
 
 			if (stamp.style.display !== 'block') {
 				error.style.display = 'block';
 			}
-			console.log( e.message );
+			console.log(e.message);
 		}
 	}, false);
 
